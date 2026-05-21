@@ -38,10 +38,24 @@ show_post_guide() {
     log "Crafty Controller installation complete!"
     echo ""
     info "Access the web interface at: http://$(hostname -I | awk '{print $1}'):8443"
-    info "Default credentials are shown at the end of the installer output above."
     echo ""
     warn "Make sure port 8443 is open in your firewall if accessing remotely."
     echo ""
+}
+
+show_creds() {
+    local creds_file="$INSTALL_DIR/app/config/default-creds.txt"
+    read -rp "  Show default credentials? [y/N]: " ans
+    if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
+        if [[ -f "$creds_file" ]]; then
+            echo ""
+            cat "$creds_file"
+            echo ""
+        else
+            warn "Credentials file not found at $creds_file"
+            info "Default is admin / admin (change on first login)."
+        fi
+    fi
 }
 
 start_crafty() {
@@ -66,6 +80,7 @@ check_root
 install_deps
 install_crafty
 show_post_guide
+show_creds
 start_crafty
 
 log "Done."
