@@ -93,6 +93,29 @@ start_crafty() {
     fi
 }
 
+setup_alias() {
+    local profile_file="/etc/profile.d/crafty.sh"
+    if [[ ! -f "$profile_file" ]]; then
+        log "Creating 'run crafty' command..."
+        cat > "$profile_file" << 'EOF'
+run() {
+    case "$1" in
+        crafty)
+            sudo -u crafty bash -c 'cd /var/opt/minecraft/crafty && ./run_crafty.sh'
+            ;;
+        *)
+            echo "Usage: run crafty"
+            ;;
+    esac
+}
+EOF
+        chmod +x "$profile_file"
+        log "Command added. Log out and back in, or run: source $profile_file"
+    else
+        info "'run crafty' already set up."
+    fi
+}
+
 # --- Main ---
 echo ""
 log "Crafty Controller — Minecraft Server Manager"
@@ -105,5 +128,6 @@ detect_paths
 show_post_guide
 show_creds
 start_crafty
+setup_alias
 
 log "Done."
