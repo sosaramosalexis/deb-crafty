@@ -37,17 +37,24 @@ show_post_guide() {
     echo ""
     log "Crafty Controller installation complete!"
     echo ""
-    info "To start Crafty Controller manually:"
-    echo ""
-    echo "  sudo su crafty"
-    echo "  cd $INSTALL_DIR"
-    echo "  ./run_crafty.sh"
-    echo ""
     info "Access the web interface at: http://$(hostname -I | awk '{print $1}'):8443"
     info "Default credentials are shown at the end of the installer output above."
     echo ""
     warn "Make sure port 8443 is open in your firewall if accessing remotely."
     echo ""
+}
+
+start_crafty() {
+    info "Crafty runs as the 'crafty' user."
+    echo ""
+    read -rp "  Start Crafty Controller now? [y/N]: " ans
+    if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
+        log "Starting Crafty Controller..."
+        sudo -u crafty bash -c "cd $INSTALL_DIR && ./run_crafty.sh"
+    else
+        info "To start manually later:"
+        echo "  sudo -u crafty bash -c 'cd $INSTALL_DIR && ./run_crafty.sh'"
+    fi
 }
 
 # --- Main ---
@@ -59,5 +66,6 @@ check_root
 install_deps
 install_crafty
 show_post_guide
+start_crafty
 
 log "Done."
