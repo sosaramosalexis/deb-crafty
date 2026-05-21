@@ -33,14 +33,30 @@ install_crafty() {
     ./install_crafty.sh
 }
 
-show_post_guide() {
+clean_install() {
     echo ""
-    log "Crafty Controller installation complete!"
+    warn "This will remove ALL Crafty Controller files and directories."
+    warn "Action cannot be undone."
     echo ""
-    info "Access the web interface at: http://$(hostname -I | awk '{print $1}'):8443"
-    echo ""
-    warn "Make sure port 8443 is open in your firewall if accessing remotely."
-    echo ""
+    read -rp "  Type 'yes' to confirm clean: " ans
+    if [[ "$ans" != "yes" ]]; then
+        log "Clean cancelled."
+        return
+    fi
+
+    log "Stopping Crafty if running..."
+    pkill -f run_crafty.sh 2>/dev/null || true
+
+    log "Removing $BASE_DIR..."
+    rm -rf "$BASE_DIR"
+
+    log "Removing crafty user if exists..."
+    id crafty &>/dev/null && userdel -r crafty 2>/dev/null
+
+    log "Removing /etc/profile.d/crafty.sh..."
+    rm -f /etc/profile.d/crafty.sh
+
+    log "Clean complete. Ready for a fresh install."
 }
 
 detect_paths() {
@@ -85,11 +101,7 @@ start_crafty() {
             info "Start manually: sudo su crafty && cd $BASE_DIR && ls"
         fi
     else
-        info "To start manually later:"
-        echo "  sudo su crafty"
-        echo "  cd $BASE_DIR"
-        echo "  ls  (find the run script)"
-        echo "  ./run_crafty.sh"
+        info "To start manually later, type: run crafty"
     fi
 }
 
@@ -110,24 +122,65 @@ run() {
 }
 EOF
         chmod +x "$profile_file"
-        log "Command added. Log out and back in, or run: source $profile_file"
+        source "$profile_file"
+        log "Type 'run crafty' to start. (source $profile_file in existing sessions)"
     else
         info "'run crafty' already set up."
     fi
 }
 
+show_banner() {
+    echo ""
+    echo -e "${GREEN}  Crafty Controller — Minecraft Server Manager${NC}"
+    echo ""
+}
+
+show_menu() {
+    echo ""
+    info "Select an option:"
+    echo ""
+    echo "  ${GREEN}[1]${NC} Install Crafty Controller"
+    echo "  ${GREEN}[2]${NC} Clean directories for new install"
+    echo ""
+    echo "  ${CYAN}[Q]${NC} Quit"
+    echo ""
+}
+
+run_install_flow() {
+    install_deps
+    install_crafty
+    detect_paths
+    echo ""
+    log "Crafty Controller installation complete!"
+    echo ""
+    info "Access the web interface at: http://$(hostname -I | awk '{print $1}'):8443"
+    echo ""
+    warn "Make sure port 8443 is open in your firewall if accessing remotely."
+    echo ""
+    show_creds
+    start_crafty
+    setup_alias
+}
+
 # --- Main ---
-echo ""
-log "Crafty Controller — Minecraft Server Manager"
-echo ""
-
 check_root
-install_deps
-install_crafty
-detect_paths
-show_post_guide
-show_creds
-start_crafty
-setup_alias
+show_banner
 
-log "Done."
+if [[ $# -ge 1 && "$1" == "install" ]]; then
+    run_install_flow
+    log "Done."
+    exit 0
+fi
+
+while true; do
+    show_menu
+    read -rp "  Enter choice [1-2]: " choice
+    case "$choice" in
+        1) run_install_flow ;;
+        2) clean_install ;;
+        [Qq]) log "Goodbye."; exit 0 ;;
+        *) err "Invalid choice." ;;
+    esac
+    echo ""
+    read -rp "  Press Enter to continue..."
+done
