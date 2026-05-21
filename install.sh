@@ -7,7 +7,7 @@ warn() { echo -e "${YELLOW}[!]${NC} $1"; }
 info() { echo -e "${CYAN}[*]${NC} $1"; }
 err()  { echo -e "${RED}[-]${NC} $1"; }
 
-INSTALL_DIR="/var/opt/minecraft/crafty"
+BASE_DIR="/var/opt/minecraft/crafty"
 
 check_root() {
     if [[ "$EUID" -ne 0 ]]; then
@@ -43,17 +43,31 @@ show_post_guide() {
     echo ""
 }
 
+detect_paths() {
+    if [[ -d "$BASE_DIR/crafty-4" ]]; then
+        CRAFTY_DIR="$BASE_DIR/crafty-4"
+    else
+        CRAFTY_DIR="$BASE_DIR"
+    fi
+    CREDS_FILE="$CRAFTY_DIR/app/config/default-creds.txt"
+    RUN_SCRIPT="$BASE_DIR/run_crafty.sh"
+    if [[ ! -f "$RUN_SCRIPT" ]]; then
+        RUN_SCRIPT="$CRAFTY_DIR/run_crafty.sh"
+    fi
+}
+
 show_creds() {
-    local creds_file="$INSTALL_DIR/app/config/default-creds.txt"
     read -rp "  Show default credentials? [y/N]: " ans
     if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
-        if [[ -f "$creds_file" ]]; then
+        if [[ -f "$CREDS_FILE" ]]; then
             echo ""
-            cat "$creds_file"
+            log "Default credentials (change on first login):"
+            echo ""
+            cat "$CREDS_FILE"
             echo ""
         else
-            warn "Credentials file not found at $creds_file"
-            info "Default is admin / admin (change on first login)."
+            warn "Credentials file not found at $CREDS_FILE"
+            info "Try: sudo cat $BASE_DIR/*/app/config/default-creds.txt"
         fi
     fi
 }
@@ -63,11 +77,19 @@ start_crafty() {
     echo ""
     read -rp "  Start Crafty Controller now? [y/N]: " ans
     if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
-        log "Starting Crafty Controller..."
-        sudo -u crafty bash -c "cd $INSTALL_DIR && ./run_crafty.sh"
+        if [[ -x "$RUN_SCRIPT" ]]; then
+            log "Starting Crafty Controller..."
+            sudo -u crafty bash -c "cd $(dirname "$RUN_SCRIPT") && ./$(basename "$RUN_SCRIPT")"
+        else
+            err "Run script not found at $RUN_SCRIPT"
+            info "Start manually: sudo su crafty && cd $BASE_DIR && ls"
+        fi
     else
         info "To start manually later:"
-        echo "  sudo -u crafty bash -c 'cd $INSTALL_DIR && ./run_crafty.sh'"
+        echo "  sudo su crafty"
+        echo "  cd $BASE_DIR"
+        echo "  ls  (find the run script)"
+        echo "  ./run_crafty.sh"
     fi
 }
 
@@ -79,6 +101,7 @@ echo ""
 check_root
 install_deps
 install_crafty
+detect_paths
 show_post_guide
 show_creds
 start_crafty
