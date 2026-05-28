@@ -1,62 +1,56 @@
 #!/usr/bin/env bash
-set -u
-
-GREEN='\033[0;32m'; YELLOW='\033[1;33m'; CYAN='\033[0;36m'; RED='\033[0;31m'; BOLD='\033[1m'; NC='\033[0m'
-log()  { echo -e "${GREEN}[+]${NC} $1"; }
-warn() { echo -e "${YELLOW}[!]${NC} $1"; }
-info() { echo -e "${CYAN}[*]${NC} $1"; }
-err()  { echo -e "${RED}[-]${NC} $1"; }
+set -euo pipefail
 
 BASE_DIR="/var/opt/minecraft/crafty"
 
 check_root() {
     if [[ "$EUID" -ne 0 ]]; then
-        err "This script must be run as root (use sudo)."
+        echo "This script must be run as root (use sudo)."
         exit 1
     fi
 }
 
+if ! command -v whiptail >/dev/null 2>&1; then
+    echo "Installing whiptail for interactive menu..."
+    DEBIAN_FRONTEND=noninteractive apt-get update -qq && apt-get install -y -qq whiptail
+fi
+
+check_root
+
 install_deps() {
-    log "Updating package list and installing dependencies..."
+    echo "Updating package list and installing dependencies..."
     apt update && apt upgrade -y
-    apt install git -y
+    apt install git whiptail -y
 }
 
 install_crafty() {
-    log "Cloning Crafty Controller installer..."
+    echo "Cloning Crafty Controller installer..."
     cd /tmp
     rm -rf crafty-installer-4.0 2>/dev/null
     git clone https://gitlab.com/crafty-controller/crafty-installer-4.0.git
     cd crafty-installer-4.0
-
-    log "Running Crafty Controller installer..."
+    echo "Running Crafty Controller installer..."
     ./install_crafty.sh
 }
 
 clean_install() {
-    echo ""
-    warn "This will remove ALL Crafty Controller files and directories."
-    warn "Action cannot be undone."
-    echo ""
-    read -rp "  Type 'yes' to confirm clean: " ans
-    if [[ "$ans" != "yes" ]]; then
-        log "Clean cancelled."
+    if ! whiptail --yesno "This will remove ALL Crafty Controller files and directories.\nAction cannot be undone." 8 60; then
         return
     fi
 
-    log "Stopping Crafty if running..."
+    echo "Stopping Crafty if running..."
     pkill -f run_crafty.sh 2>/dev/null || true
 
-    log "Removing $BASE_DIR..."
+    echo "Removing $BASE_DIR..."
     rm -rf "$BASE_DIR"
 
-    log "Removing crafty user if exists..."
+    echo "Removing crafty user if exists..."
     id crafty &>/dev/null && userdel -r crafty 2>/dev/null
 
-    log "Removing /etc/profile.d/crafty.sh..."
+    echo "Removing /etc/profile.d/crafty.sh..."
     rm -f /etc/profile.d/crafty.sh
 
-    log "Clean complete. Ready for a fresh install."
+    echo "Clean complete. Ready for a fresh install."
 }
 
 detect_paths() {
@@ -73,42 +67,35 @@ detect_paths() {
 }
 
 show_creds() {
-    read -rp "  Show default credentials? [y/N]: " ans
-    if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
-        if [[ -f "$CREDS_FILE" ]]; then
-            echo ""
-            log "Default credentials (change on first login):"
-            echo ""
-            cat "$CREDS_FILE"
-            echo ""
-        else
-            warn "Credentials file not found at $CREDS_FILE"
-            info "Try: sudo cat $BASE_DIR/*/app/config/default-creds.txt"
-        fi
+    detect_paths
+    if [[ -f "$CREDS_FILE" ]]; then
+        local content
+        content=$(cat "$CREDS_FILE")
+        whiptail --msgbox "Default credentials (change on first login):\n\n${content}" 15 60
+    else
+        whiptail --msgbox "Credentials file not found at:\n${CREDS_FILE}" 8 60
     fi
 }
 
 start_crafty() {
-    info "Crafty runs as the 'crafty' user."
-    echo ""
-    read -rp "  Start Crafty Controller now? [y/N]: " ans
-    if [[ "$ans" == "y" || "$ans" == "Y" ]]; then
-        if [[ -x "$RUN_SCRIPT" ]]; then
-            log "Starting Crafty Controller..."
-            sudo -u crafty bash -c "cd $(dirname "$RUN_SCRIPT") && ./$(basename "$RUN_SCRIPT")"
-        else
-            err "Run script not found at $RUN_SCRIPT"
-            info "Start manually: sudo su crafty && cd $BASE_DIR && ls"
-        fi
-    else
-        info "To start manually later, type: run crafty"
+    detect_paths
+    if [[ ! -x "$RUN_SCRIPT" ]]; then
+        whiptail --msgbox "Run script not found at:\n${RUN_SCRIPT}\n\nInstall Crafty first." 8 60
+        return
+    fi
+    if ! id crafty &>/dev/null; then
+        whiptail --msgbox "Crafty user does not exist.\nInstall Crafty first." 8 50
+        return
+    fi
+    if whiptail --yesno "Start Crafty Controller now?" 8 40; then
+        sudo -u crafty bash -c "cd $(dirname "$RUN_SCRIPT") && ./$(basename "$RUN_SCRIPT")"
     fi
 }
 
 setup_alias() {
     local profile_file="/etc/profile.d/crafty.sh"
     if [[ ! -f "$profile_file" ]]; then
-        log "Creating 'run crafty' command..."
+        echo "Creating 'run crafty' command..."
         cat > "$profile_file" << 'EOF'
 run() {
     case "$1" in
@@ -123,64 +110,39 @@ run() {
 EOF
         chmod +x "$profile_file"
         source "$profile_file"
-        log "Type 'run crafty' to start. (source $profile_file in existing sessions)"
+        echo "Type 'run crafty' to start. (source /etc/profile.d/crafty.sh in existing sessions)"
     else
-        info "'run crafty' already set up."
+        echo "'run crafty' already set up."
     fi
-}
-
-show_banner() {
-    echo ""
-    echo -e "${GREEN}  Crafty Controller — Minecraft Server Manager${NC}"
-    echo ""
-}
-
-show_menu() {
-    echo ""
-    info "Select an option:"
-    echo ""
-    echo "  ${GREEN}[1]${NC} Install Crafty Controller"
-    echo "  ${GREEN}[2]${NC} Clean directories for new install"
-    echo ""
-    echo "  ${CYAN}[Q]${NC} Quit"
-    echo ""
 }
 
 run_install_flow() {
     install_deps
     install_crafty
-    detect_paths
-    echo ""
-    log "Crafty Controller installation complete!"
-    echo ""
-    info "Access the web interface at: http://$(hostname -I | awk '{print $1}'):8443"
-    echo ""
-    warn "Make sure port 8443 is open in your firewall if accessing remotely."
-    echo ""
-    show_creds
-    start_crafty
     setup_alias
+    local ip
+    ip=$(hostname -I | awk '{print $1}')
+    whiptail --msgbox "Crafty Controller installation complete!\n\nAccess the web interface at:\nhttp://${ip}:8443\n\nMake sure port 8443 is open in your firewall." 12 60
 }
-
-# --- Main ---
-check_root
-show_banner
 
 if [[ $# -ge 1 && "$1" == "install" ]]; then
     run_install_flow
-    log "Done."
+    echo "Done."
     exit 0
 fi
 
 while true; do
-    show_menu
-    read -rp "  Enter choice [1-2]: " choice
-    case "$choice" in
+    CHOICE=$(whiptail --menu "Crafty Controller — Minecraft Server Manager" 14 58 4 \
+        "1" "Install Crafty Controller" \
+        "2" "Clean directories for new install" \
+        "3" "Show default credentials" \
+        "4" "Start Crafty Controller server" \
+        3>&1 1>&2 2>&3)
+    case "$CHOICE" in
+        "") break ;;
         1) run_install_flow ;;
         2) clean_install ;;
-        [Qq]) log "Goodbye."; exit 0 ;;
-        *) err "Invalid choice." ;;
+        3) show_creds ;;
+        4) start_crafty ;;
     esac
-    echo ""
-    read -rp "  Press Enter to continue..."
 done

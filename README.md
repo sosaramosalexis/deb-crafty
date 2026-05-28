@@ -4,12 +4,11 @@ Installs [Crafty Controller](https://gitlab.com/crafty-controller/crafty-install
 
 ## Usage
 
-Run directly:
 ```bash
 sudo bash <(curl -fsSL https://raw.githubusercontent.com/alsosram/deb-crafty/main/install.sh)
 ```
 
-Run with auto-install (skip menu):
+Auto-install (skip menu):
 ```bash
 sudo bash <(curl -fsSL ...) install
 ```
@@ -18,12 +17,14 @@ sudo bash <(curl -fsSL ...) install
 
 | # | Option | Description |
 |---|--------|-------------|
-| 1 | Install Crafty Controller | Full install: deps, clone, installer, creds prompt, start prompt, `run crafty` alias |
+| 1 | Install Crafty Controller | Full install: deps, clone, installer, `run crafty` alias |
 | 2 | Clean directories for new install | Removes `/var/opt/minecraft/crafty`, `crafty` user, and profile alias |
+| 3 | Show default credentials | Display auto-generated credentials from the latest install |
+| 4 | Start Crafty Controller server | Launch the Crafty service manually |
 
 ## After Install
 
 - Access the web UI at `http://<hostname>:8443`
-- Show default credentials when prompted during install
 - Start again anytime with: `run crafty`
+- View credentials via menu option 3
 - Default install path: `/var/opt/minecraft/crafty`
