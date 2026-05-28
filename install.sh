@@ -88,7 +88,10 @@ start_crafty() {
         return
     fi
     if whiptail --yesno "Start Crafty Controller now?" 8 40; then
-        sudo -u crafty bash -c "cd $(dirname "$RUN_SCRIPT") && ./$(basename "$RUN_SCRIPT")"
+        local script_dir
+        script_dir=$(dirname "$RUN_SCRIPT")
+        nohup sudo -u crafty bash -c "cd '$script_dir' && ./$(basename "$RUN_SCRIPT")" > /var/log/crafty.log 2>&1 &
+        whiptail --msgbox "Crafty started in background.\n\nLogs: /var/log/crafty.log\nPID: $!" 8 60
     fi
 }
 
