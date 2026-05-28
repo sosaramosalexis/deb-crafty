@@ -71,9 +71,9 @@ show_creds() {
     if [[ -f "$CREDS_FILE" ]]; then
         local content
         content=$(cat "$CREDS_FILE")
-        whiptail --msgbox "Default credentials (change on first login):\n\n${content}" 15 60
+        whiptail --msgbox "Default credentials (change on first login):\n\n${content}" 15 70
     else
-        whiptail --msgbox "Credentials file not found at:\n${CREDS_FILE}" 8 60
+        whiptail --msgbox "Credentials not yet generated.\n\nStart Crafty first (option 4), then\ncheck this file:\n${CREDS_FILE}" 10 70
     fi
 }
 
@@ -122,7 +122,7 @@ run_install_flow() {
     setup_alias
     local ip
     ip=$(hostname -I | awk '{print $1}')
-    whiptail --msgbox "Crafty Controller installation complete!\n\nAccess the web interface at:\nhttp://${ip}:8443\n\nMake sure port 8443 is open in your firewall." 12 60
+    whiptail --msgbox "Crafty Controller installation complete!\n\nAccess the web interface at:\nhttp://${ip}:8443\n\nStart Crafty (option 4) to generate\ndefault credentials, then view with\noption 3.\n\nMake sure port 8443 is open." 15 60
 }
 
 if [[ $# -ge 1 && "$1" == "install" ]]; then
