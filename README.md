@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="https://img.shields.io/badge/shell-blue?logo=bash&style=flat-square" alt="Shell">
+</p>
+
 # Crafty Controller — Minecraft Server Manager
 
 Installs [Crafty Controller](https://gitlab.com/crafty-controller/crafty-installer-4.0), a web-based Minecraft server manager.
