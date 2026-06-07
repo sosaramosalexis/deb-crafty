@@ -9,7 +9,7 @@ Installs [Crafty Controller](https://gitlab.com/crafty-controller/crafty-install
 ## Usage
 
 ```bash
-sudo bash <(curl -fsSL https://raw.githubusercontent.com/sosramalex/deb-crafty/main/install.sh)
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/sosaramosalexis/deb-crafty/main/install.sh)
 ```
 
 Auto-install (skip menu):
